@@ -2,7 +2,7 @@
 Кастомные исключения для приложения.
 """
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 
 class AppException(Exception):
@@ -19,7 +19,7 @@ class DocumentNotFoundError(AppException):
 
     def __init__(self, doc_id: str = None):
         message = (
-            f"Документ не найден" if doc_id is None else f"Документ {doc_id} не найден"
+            "Документ не найден" if doc_id is None else f"Документ {doc_id} не найден"
         )
         super().__init__(message, 404)
 

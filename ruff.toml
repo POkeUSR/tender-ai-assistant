@@ -1,0 +1,10 @@
+[lint]
+# Ignore E402 (module level import not at top of file) for files that use load_dotenv()
+# This is intentional - load_dotenv() must be called before other imports to set API keys
+ignore = ["E402"]
+
+[lint.per-file-ignores]
+"analyze_risks.py" = ["E402"]
+"app.py" = ["E402"]
+"backend/main.py" = ["E402"]
+"ui.py" = ["E402"]
