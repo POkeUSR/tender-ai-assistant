@@ -26,5 +26,5 @@ tender_prompt = PromptTemplate(
 ВОПРОС ПОЛЬЗОВАТЕЛЯ:
 {question}
 
-"""
+""",
 )

@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import gradio as gr
@@ -54,6 +55,7 @@ def analyze_risks():
         return "Сначала загрузите документ."
 
     from analyze_risks import RISK_QUESTION
+
     try:
         return ask_llm(vectorstore, RISK_QUESTION)
     except Exception as e:

@@ -1,5 +1,6 @@
 from rag.rag_chain import ask_llm
 
+
 def analyze_tender(vectorstore):
     question = """
 Сделай полный анализ тендерной документации и выведи:

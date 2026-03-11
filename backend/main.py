@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Load .env from project root (c:/tender/.env)
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(_ROOT, '.env'))
+load_dotenv(os.path.join(_ROOT, ".env"))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

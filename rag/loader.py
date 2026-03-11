@@ -31,7 +31,9 @@ def load_doc_legacy(path: str) -> str:
 
     # Попытка через antiword (Linux/Mac)
     try:
-        result = subprocess.run(["antiword", path], capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            ["antiword", path], capture_output=True, text=True, timeout=30
+        )
         if result.returncode == 0:
             return result.stdout
     except FileNotFoundError:
@@ -42,6 +44,7 @@ def load_doc_legacy(path: str) -> str:
         try:
             import win32com.client
             import pythoncom
+
             pythoncom.CoInitialize()
             word = win32com.client.Dispatch("Word.Application")
             word.Visible = False
@@ -74,7 +77,9 @@ def load_file(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     loader = LOADERS.get(ext)
     if loader is None:
-        raise ValueError(f"Неподдерживаемый формат файла: {ext}. Поддерживаются: {', '.join(SUPPORTED_EXTENSIONS)}")
+        raise ValueError(
+            f"Неподдерживаемый формат файла: {ext}. Поддерживаются: {', '.join(SUPPORTED_EXTENSIONS)}"
+        )
     return loader(path)
 
 

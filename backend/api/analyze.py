@@ -26,14 +26,15 @@ ANALYZE_QUESTION = """
 @router.post("/analyze")
 async def analyze():
     if not state.is_ready():
-        raise HTTPException(status_code=400, detail="Сначала загрузите тендерный документ")
+        raise HTTPException(
+            status_code=400, detail="Сначала загрузите тендерный документ"
+        )
 
     vs = state.get_vectorstore()
     docs = vs.similarity_search(ANALYZE_QUESTION, k=6)
 
     context = "\n".join(
-        doc.page_content if hasattr(doc, "page_content") else str(doc)
-        for doc in docs
+        doc.page_content if hasattr(doc, "page_content") else str(doc) for doc in docs
     )
 
     prompt = tender_prompt.format(context=context, question=ANALYZE_QUESTION)

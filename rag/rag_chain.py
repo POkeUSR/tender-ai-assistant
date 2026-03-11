@@ -14,10 +14,7 @@ def ask_llm(vectorstore, question):
         else:
             context += str(doc) + "\n"
 
-    prompt = tender_prompt.format(
-        context=context,
-        question=question
-    )
+    prompt = tender_prompt.format(context=context, question=question)
 
     llm = ChatOpenAI(model="gpt-4o-mini")
 

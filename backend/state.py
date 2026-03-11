@@ -1,4 +1,5 @@
 """Global application state — shared vectorstore across all routes."""
+
 from typing import Optional
 
 vectorstore = None
@@ -19,3 +20,15 @@ def get_vectorstore():
 
 def is_ready() -> bool:
     return vectorstore is not None
+
+
+def get_user_vectorstore(user_id: str, doc_id: str):
+    """
+    Получить vectorstore для конкретного пользователя и документа.
+    
+    TODO: Реализовать хранение vectorstore для каждого пользователя/документа.
+    Пока возвращает None (используется глобальный vectorstore).
+    """
+    # Для будущей реализации мульти-пользовательского режима
+    # Здесь будет логика для получения user-specific vectorstore
+    return None

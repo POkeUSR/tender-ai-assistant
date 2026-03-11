@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from rag.loader import load_pdf
@@ -48,6 +49,7 @@ def analyze_risks(pdf_path: str = "data/tender.pdf") -> str:
 
 if __name__ == "__main__":
     import sys
+
     pdf_path = sys.argv[1] if len(sys.argv) > 1 else "data/tender.pdf"
     print(f"Анализ рисков для: {pdf_path}\n")
     result = analyze_risks(pdf_path)

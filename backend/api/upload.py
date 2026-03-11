@@ -25,7 +25,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
             raise HTTPException(
                 status_code=400,
                 detail=f"Файл '{file.filename}': неподдерживаемый формат '{ext}'. "
-                       f"Поддерживаются: {', '.join(SUPPORTED_EXTENSIONS)}"
+                f"Поддерживаются: {', '.join(SUPPORTED_EXTENSIONS)}",
             )
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as f:
@@ -40,7 +40,9 @@ async def upload_files(files: List[UploadFile] = File(...)):
         combined_name = ", ".join(filenames)
         state.set_vectorstore(vs, combined_name, len(chunks))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка обработки файлов: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Ошибка обработки файлов: {str(e)}"
+        )
 
     return {
         "status": "ok",
