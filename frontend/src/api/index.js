@@ -11,11 +11,18 @@ export async function uploadFiles(files) {
     form.append('files', file)
   }
   const res = await fetch(`${BASE}/upload`, { method: 'POST', body: form })
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.detail || 'Upload failed')
+  let data
+  try {
+    data = await res.json()
+  } catch (e) {
+    // If response is not JSON, try to get text
+    const text = await res.text()
+    throw new Error(text || `HTTP ${res.status}: Upload failed`)
   }
-  return res.json()
+  if (!res.ok) {
+    throw new Error(data.detail || `HTTP ${res.status}: Upload failed`)
+  }
+  return data
 }
 
 /** @deprecated use uploadFiles */

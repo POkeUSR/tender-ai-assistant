@@ -8,6 +8,6 @@ router = APIRouter()
 def get_status():
     return {
         "ready": state.is_ready(),
-        "filename": state.current_filename,
-        "chunks_count": state.chunks_count,
+        "filename": state.get_legacy_filename(),
+        "chunks_count": state.get_legacy_chunks_count(),
     }
