@@ -20,6 +20,7 @@ from api.analyze import router as analyze_router
 from api.risks import router as risks_router
 from api.status import router as status_router
 from api.auth import router as auth_router
+from api.documents import router as documents_router
 from backend.database import init_db
 
 
@@ -53,6 +54,7 @@ app.include_router(analyze_router, prefix="/api")
 app.include_router(risks_router, prefix="/api")
 app.include_router(status_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth")
+app.include_router(documents_router, prefix="/api")
 
 
 @app.get("/")
