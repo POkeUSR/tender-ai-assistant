@@ -10,3 +10,9 @@ faiss-cpu
 PyMuPDF
 python-docx
 openai
+sqlalchemy
+sqlalchemy[sqlite]
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+pyjwt
