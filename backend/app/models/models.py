@@ -69,7 +69,8 @@ class Analysis(Base):
 class Score(Base):
     """
     Score model.
-    Stores evaluation scores for a tender with reasons.
+    Stores detailed evaluation scores for a tender with reasons.
+    Updated for Decision Support System with 3-component scoring.
     """
     __tablename__ = "scores"
 
@@ -77,15 +78,21 @@ class Score(Base):
     tender_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("tenders.id", ondelete="CASCADE"), nullable=False
     )
-    value: Mapped[int] = mapped_column(Integer, nullable=False)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Component scores (0-100 each, weighted for final score)
+    budget_score: Mapped[int] = mapped_column(Integer, default=0)  # 0-40 points
+    complexity_score: Mapped[int] = mapped_column(Integer, default=0)  # 0-30 points
+    competition_score: Mapped[int] = mapped_column(Integer, default=0)  # 0-30 points
+    # Final score (0-100) and decision
+    total_score: Mapped[int] = mapped_column(Integer, default=0)
+    decision: Mapped[str] = mapped_column(String(20), default="REVIEW")  # GO, REVIEW, REJECT
+    reasoning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
     tender: Mapped["Tender"] = relationship("Tender", back_populates="scores")
 
     def __repr__(self) -> str:
-        return f"<Score(id={self.id}, tender_id={self.tender_id}, value={self.value})>"
+        return f"<Score(id={self.id}, tender_id={self.tender_id}, total={self.total_score}, decision={self.decision})>"
 
 
 class Proposal(Base):

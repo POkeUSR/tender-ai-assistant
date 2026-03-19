@@ -38,7 +38,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
         chunks = split_text(text)
         vs = create_vectorstore(chunks)
         combined_name = ", ".join(filenames)
-        state.set_vectorstore(vs, combined_name, len(chunks))
+        state.set_vectorstore(vs, combined_name, len(chunks), text)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Ошибка обработки файлов: {str(e)}"

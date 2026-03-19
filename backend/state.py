@@ -16,9 +16,9 @@ class VectorStoreManager:
     def __init__(self):
         self._stores: Dict[str, Any] = {}
         self._lock = threading.RLock()
-        self._legacy_store: Optional[Tuple[Any, str, int]] = None
+        self._legacy_store: Optional[Tuple[Any, str, int, str]] = None  # (vs, filename, chunks, raw_text)
     
-    def set_legacy(self, vs: Any, filename: str, n_chunks: int) -> None:
+    def set_legacy(self, vs: Any, filename: str, n_chunks: int, raw_text: str = "") -> None:
         """
         Set the legacy vectorstore (for single-user mode compatibility).
         
@@ -26,19 +26,30 @@ class VectorStoreManager:
             vs: The vectorstore object
             filename: Name of the indexed file
             n_chunks: Number of chunks in the vectorstore
+            raw_text: Raw text from the document
         """
         with self._lock:
-            self._legacy_store = (vs, filename, n_chunks)
+            self._legacy_store = (vs, filename, n_chunks, raw_text)
     
-    def get_legacy(self) -> Optional[Tuple[Any, str, int]]:
+    def get_legacy(self) -> Optional[Tuple[Any, str, int, str]]:
         """
         Get the legacy vectorstore.
         
         Returns:
-            Tuple of (vectorstore, filename, chunks_count) or None
+            Tuple of (vectorstore, filename, chunks_count, raw_text) or None
         """
         with self._lock:
             return self._legacy_store
+    
+    def get_raw_text(self) -> str:
+        """
+        Get raw text from the legacy store.
+        
+        Returns:
+            Raw text string
+        """
+        with self._lock:
+            return self._legacy_store[3] if self._legacy_store else ""
     
     def is_legacy_ready(self) -> bool:
         """Check if legacy vectorstore is initialized."""
@@ -146,7 +157,7 @@ vectorstore_manager = VectorStoreManager()
 
 
 # Legacy functions (for backward compatibility)
-def set_vectorstore(vs: Any, filename: str, n_chunks: int) -> None:
+def set_vectorstore(vs: Any, filename: str, n_chunks: int, raw_text: str = "") -> None:
     """
     Set the legacy vectorstore (single-user mode).
     
@@ -154,8 +165,19 @@ def set_vectorstore(vs: Any, filename: str, n_chunks: int) -> None:
         vs: The vectorstore object
         filename: Name of the indexed file
         n_chunks: Number of chunks
+        raw_text: Raw text from the document
     """
-    vectorstore_manager.set_legacy(vs, filename, n_chunks)
+    vectorstore_manager.set_legacy(vs, filename, n_chunks, raw_text)
+
+
+def get_raw_text() -> str:
+    """
+    Get raw text from the legacy store.
+    
+    Returns:
+        Raw text string
+    """
+    return vectorstore_manager.get_raw_text()
 
 
 def get_vectorstore() -> Optional[Any]:

@@ -14,7 +14,10 @@ from app.schemas.tender import (
     TenderDataExtraction,
     TenderRisks,
     TenderScore,
+    TenderScoreComponents,
+    TenderScoring,
     TenderProposal,
+    TenderDecision,
 )
 
 # Configure logging
@@ -190,6 +193,124 @@ class AIService:
                 overall_risk_score=0
             )
     
+    async def score_components(self, text: str) -> TenderScoreComponents:
+        """
+        Calculate scoring components for tender using 3-component scoring.
+        
+        Args:
+            text: Raw tender document text
+            
+        Returns:
+            TenderScoreComponents with budget, complexity, competition scores
+        """
+        logger.info("AI: Начинаю расчет компонентов оценки тендера...")
+        
+        # Create a temporary chain for score components if not available
+        score_comp_chain = self.llm.with_structured_output(TenderScoreComponents)
+        
+        prompt = f"""
+Ты эксперт по государственным закупкам. Оцени привлекательность тендера по трем компонентам.
+
+Тендерный документ:
+{text[:4000]}
+
+Оцени по следующей системе:
+
+1. BUDGET SCORE (0-40 баллов):
+- Оцени условия оплаты и бюджет
+- 40: Отличные условия (аванс 50%+, своевременная оплата)
+- 30: Хорошие условия (аванс 30%, стандартные сроки)
+- 20: Средние условия (минимальный аванс, длительные сроки оплаты)
+- 10: Плохие условия (без аванса, очень длительные сроки)
+- 0: Критические условия
+
+2. COMPLEXITY SCORE (0-30 баллов):
+- Оцени техническую сложность выполнения
+- 30: Простой тендер, минимальные требования
+- 20: Средняя сложность, стандартные требования
+- 10: Высокая сложность, специфические требования
+- 0: Очень сложный тендер
+
+3. COMPETITION SCORE (0-30 баллов):
+- Оцени ожидаемый уровень конкуренции
+- 30: Нишевой тендер, мало конкурентов
+- 20: Средняя конкуренция
+- 10: Высокая конкуренция
+- 0: Очень конкурентный тендер
+
+Верни структурированный ответ с тремя оценками и кратким обоснованием.
+"""
+        
+        try:
+            result = await score_comp_chain.ainvoke(prompt)
+            logger.info(f"AI: Компоненты оценки рассчитаны - budget: {result.budget_score}, complexity: {result.complexity_score}, competition: {result.competition_score}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"AI: Ошибка при расчете компонентов оценки: {e}")
+            return TenderScoreComponents(
+                budget_score=0,
+                complexity_score=0,
+                competition_score=0,
+                reasoning="Ошибка расчета оценки"
+            )
+    
+    async def calculate_decision(
+        self,
+        score_components: TenderScoreComponents,
+        risks: TenderRisks
+    ) -> TenderScoring:
+        """
+        Calculate final decision based on scores and risk analysis.
+        
+        Decision Rules:
+        - REJECT: If total_score < 50
+        - REVIEW: If total_score >= 50 BUT has at least one "High" risk
+        - GO: If total_score >= 50 and no "High" risks
+        
+        Args:
+            score_components: Three component scores from AI
+            risks: Risk analysis results
+            
+        Returns:
+            TenderScoring with final decision
+        """
+        logger.info("AI: Рассчитываю финальное решение...")
+        
+        # Calculate total score (sum of all components)
+        total_score = (
+            score_components.budget_score +
+            score_components.complexity_score +
+            score_components.competition_score
+        )
+        
+        # Check for high risks
+        has_high_risks = any(risk.level.value == "High" for risk in risks.risks)
+        
+        # Apply decision rules
+        if total_score < 50:
+            decision = TenderDecision.REJECT
+            reasoning = f"Низкая итоговая оценка ({total_score}/100). Тендер не рекомендуется к участию."
+        elif has_high_risks:
+            decision = TenderDecision.REVIEW
+            high_risk_count = sum(1 for r in risks.risks if r.level.value == "High")
+            reasoning = f"Высокие риски обнаружены ({high_risk_count} шт.). Требуется дополнительная проверка перед принятием решения."
+        else:
+            decision = TenderDecision.GO
+            reasoning = f"Итоговая оценка {total_score}/100. Риски в пределах нормы. Рекомендуется участвовать."
+        
+        logger.info(f"AI: Решение принято - total: {total_score}, decision: {decision}, high_risks: {has_high_risks}")
+        
+        return TenderScoring(
+            budget_score=score_components.budget_score,
+            complexity_score=score_components.complexity_score,
+            competition_score=score_components.competition_score,
+            total_score=total_score,
+            decision=decision,
+            reasoning=reasoning,
+            has_high_risks=has_high_risks
+        )
+    
     async def score(self, data: TenderDataExtraction, risks: TenderRisks) -> TenderScore:
         """
         Calculate suitability score for tender.
@@ -209,7 +330,7 @@ class AIService:
                 score=0,
                 pros=[],
                 cons=[],
-                decision="NO_GO"
+                decision=TenderDecision.REJECT
             )
         
         prompt = f"""
@@ -235,7 +356,7 @@ class AIService:
 - score: Оценка от 0 до 100
 - pros: Список преимуществ участия в тендере
 - cons: Список недостатков или сложностей
-- decision: GO (рекомендуется участвовать) или NO GO (не рекомендуется)
+- decision: GO (рекомендуется участвовать), REVIEW (проверить риски) или REJECT (отклонить)
 
 Учитывай бюджет, сроки, требования и риски.
 """
@@ -251,7 +372,7 @@ class AIService:
                 score=0,
                 pros=[],
                 cons=[],
-                decision="NO_GO"
+                decision=TenderDecision.REJECT
             )
     
     async def generate_proposal(self, data: TenderDataExtraction) -> TenderProposal:

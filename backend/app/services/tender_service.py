@@ -4,11 +4,16 @@ Handles PDF processing, OpenAI/LangChain calls, and FAISS vector store operation
 """
 
 import json
+import logging
 import os
 import shutil
 import sys
 from pathlib import Path
 from typing import AsyncGenerator, List, Optional
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add project root to path for imports (go up 4 levels: services -> app -> backend -> project_root)
 _project_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -29,9 +34,13 @@ from app.core.prompt import tender_prompt, ANALYZE_QUESTION, RISKS_QUESTION
 
 # Import state
 from backend import state
+from backend.state import get_raw_text
 
 # Import models
-from app.models.models import Tender
+from app.models.models import Tender, Score, Analysis
+
+# Import schemas
+from app.schemas.tender import TenderScoring
 
 
 class TenderService:
@@ -90,7 +99,7 @@ class TenderService:
         vs = self._create_vectorstore(chunks)
         
         combined_name = ", ".join(filenames)
-        state.set_vectorstore(vs, combined_name, len(chunks))
+        state.set_vectorstore(vs, combined_name, len(chunks), text)
 
         # Save tender to database
         tender = Tender(
@@ -178,6 +187,92 @@ class TenderService:
 
         async for chunk in self._stream_llm(prompt):
             yield chunk
+    
+    # ============== Full Analysis with Scoring ==============
+    
+    async def analyze_with_scoring(self, tender_id: int) -> dict:
+        """
+        Perform full analysis of tender with scoring and decision.
+        
+        Args:
+            tender_id: ID of the tender to analyze
+            
+        Returns:
+            Dictionary with analysis, risks, and scoring results
+        """
+        from app.services.ai_service import get_ai_service
+        
+        if not state.is_ready():
+            raise ValueError("Сначала загрузите тендерный документ")
+        
+        tender = await self.db.get(Tender, tender_id)
+        if not tender:
+            raise ValueError("Tender not found")
+        
+        # Get text from state or tender
+        text = get_raw_text() or tender.raw_text
+        if not text:
+            raise ValueError("No text available for analysis")
+        
+        # Initialize AI service
+        ai_service = get_ai_service()
+        
+        # 1. Extract data
+        logger.info("Step 1: Extracting tender data...")
+        data = await ai_service.extract_data(text)
+        
+        # 2. Analyze risks
+        logger.info("Step 2: Analyzing risks...")
+        risks = await ai_service.analyze_risks(text)
+        
+        # 3. Calculate scoring components
+        logger.info("Step 3: Calculating scoring components...")
+        score_components = await ai_service.score_components(text)
+        
+        # 4. Calculate final decision
+        logger.info("Step 4: Calculating final decision...")
+        scoring = await ai_service.calculate_decision(score_components, risks)
+        
+        # 5. Save analysis to database
+        logger.info("Step 5: Saving results to database...")
+        
+        # Save analysis
+        analysis = Analysis(
+            tender_id=tender_id,
+            summary=f"Budget: {data.budget} {data.currency}, Deadline: {data.deadline}",
+            risks=risks.model_dump(mode='json') if risks else None
+        )
+        self.db.add(analysis)
+        
+        # Save scoring
+        score_record = Score(
+            tender_id=tender_id,
+            budget_score=scoring.budget_score,
+            complexity_score=scoring.complexity_score,
+            competition_score=scoring.competition_score,
+            total_score=scoring.total_score,
+            decision=scoring.decision.value,
+            reasoning=scoring.reasoning
+        )
+        self.db.add(score_record)
+        
+        # Update tender status
+        tender.status = "analyzed"
+        
+        await self.db.commit()
+        await self.db.refresh(analysis)
+        await self.db.refresh(score_record)
+        
+        logger.info(f"Analysis complete: decision={scoring.decision.value}, total={scoring.total_score}")
+        
+        return {
+            "tender_id": tender_id,
+            "data": data.model_dump() if data else None,
+            "risks": risks.model_dump(mode='json') if risks else None,
+            "scoring": scoring.model_dump() if scoring else None,
+            "analysis_id": analysis.id,
+            "score_id": score_record.id
+        }
     
     # ============== Status Methods ==============
     

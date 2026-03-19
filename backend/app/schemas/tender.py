@@ -22,7 +22,8 @@ class RiskLevel(str, Enum):
 class TenderDecision(str, Enum):
     """Tender decision enumeration."""
     GO = "GO"
-    NO_GO = "NO GO"
+    REVIEW = "REVIEW"
+    REJECT = "REJECT"
 
 
 # ============== OpenAI Structured Output Schemas ==============
@@ -95,6 +96,34 @@ class TenderRisks(BaseModel):
     )
 
 
+class TenderScoreComponents(BaseModel):
+    """Schema for tender scoring components.
+    Used for OpenAI Structured Output with 3-component scoring."""
+    
+    budget_score: int = Field(
+        ...,
+        ge=0,
+        le=40,
+        description="Оценка бюджета и условий оплаты (0-40 баллов)"
+    )
+    complexity_score: int = Field(
+        ...,
+        ge=0,
+        le=30,
+        description="Оценка технической сложности выполнения (0-30 баллов). Чем выше, тем легче выполнить"
+    )
+    competition_score: int = Field(
+        ...,
+        ge=0,
+        le=30,
+        description="Оценка ожидаемого уровня конкуренции (0-30 баллов). Чем выше, тем меньше конкурентов"
+    )
+    reasoning: str = Field(
+        ...,
+        description="Краткое обоснование выставленных оценок"
+    )
+
+
 class TenderScore(BaseModel):
     """Schema for tender scoring result.
     Used for OpenAI Structured Output to evaluate tender viability."""
@@ -115,7 +144,50 @@ class TenderScore(BaseModel):
     )
     decision: TenderDecision = Field(
         ...,
-        description="Решение: GO (рекомендуется участвовать) или NO GO (не рекомендуется)"
+        description="Решение: GO, REVIEW или REJECT"
+    )
+
+
+class TenderScoring(BaseModel):
+    """Schema for tender scoring response with decision support.
+    Contains all scoring components and final decision."""
+    
+    budget_score: int = Field(
+        ...,
+        ge=0,
+        le=40,
+        description="Оценка бюджета и условий оплаты (0-40 баллов)"
+    )
+    complexity_score: int = Field(
+        ...,
+        ge=0,
+        le=30,
+        description="Оценка технической сложности выполнения (0-30 баллов)"
+    )
+    competition_score: int = Field(
+        ...,
+        ge=0,
+        le=30,
+        description="Оценка ожидаемого уровня конкуренции (0-30 баллов)"
+    )
+    total_score: int = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Итоговая оценка тендера (0-100 баллов)"
+    )
+    decision: TenderDecision = Field(
+        ...,
+        description="Вердикт: GO (участвовать), REVIEW (проверить риски), REJECT (отклонить)"
+    )
+    reasoning: str = Field(
+        ...,
+        description="Обоснование вердикта"
+    )
+    # Risk info for decision making
+    has_high_risks: bool = Field(
+        ...,
+        description="Есть ли высокие риски в анализе"
     )
 
 
