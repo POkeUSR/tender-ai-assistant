@@ -24,6 +24,29 @@ if "postgresql+" not in DATABASE_URL:
 engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
+# Sync engine for legacy endpoints (psycopg2)
+try:
+    SYNC_DATABASE_URL = DATABASE_URL.replace("+asyncpg", "").replace("postgresql+", "postgresql://")
+    from sqlalchemy import create_engine
+    sync_engine = create_engine(SYNC_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://"))
+    from sqlalchemy.orm import sessionmaker
+    SyncSessionLocal = sessionmaker(bind=sync_engine)
+except Exception as e:
+    print(f"[DB] Warning: Could not create sync engine: {e}")
+    sync_engine = None
+    SyncSessionLocal = None
+
+
+def get_db_sync():
+    """Sync database session for legacy endpoints."""
+    if SyncSessionLocal is None:
+        raise RuntimeError("Sync engine not available")
+    db = SyncSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 class Base(DeclarativeBase):
     pass
 
@@ -87,6 +110,24 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+# User functions for auth - sync version (for legacy endpoints)
+def get_user_by_email(db_session, email: str) -> Optional[User]:
+    """Get user by email (sync version)."""
+    return db_session.query(User).filter(User.email == email).first()
+
+def get_user_by_id(db_session, user_id: int) -> Optional[User]:
+    """Get user by ID (sync version)."""
+    return db_session.query(User).filter(User.id == user_id).first()
+
+def create_user(db_session, email: str, hashed_password: str) -> User:
+    """Create a new user (sync version)."""
+    user = User(email=email, hashed_password=hashed_password)
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
 # User functions for auth - using async SQLAlchemy
 async def get_user_by_email_async(db: AsyncSession, email: str) -> Optional[User]:
     """Get user by email (async version)."""
@@ -95,6 +136,18 @@ async def get_user_by_email_async(db: AsyncSession, email: str) -> Optional[User
     return result.scalar_one_or_none()
 
 async def get_user_by_id_async(db: AsyncSession, user_id: int) -> Optional[User]:
+    """Get user by ID (async version)."""
+    from sqlalchemy import select
+    result = await db.execute(select(User).filter(User.id == user_id))
+    return result.scalar_one_or_none()
+
+async def create_user_async(db: AsyncSession, email: str, hashed_password: str) -> User:
+    """Create a new user (async version)."""
+    user = User(email=email, hashed_password=hashed_password)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
     """Get user by ID (async version)."""
     from sqlalchemy import select
     result = await db.execute(select(User).filter(User.id == user_id))

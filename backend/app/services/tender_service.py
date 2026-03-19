@@ -6,7 +6,14 @@ Handles PDF processing, OpenAI/LangChain calls, and FAISS vector store operation
 import json
 import os
 import shutil
+import sys
+from pathlib import Path
 from typing import AsyncGenerator, List, Optional
+
+# Add project root to path for imports (go up 4 levels: services -> app -> backend -> project_root)
+_project_root = Path(__file__).resolve().parent.parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 from fastapi import UploadFile
 from langchain_openai import ChatOpenAI

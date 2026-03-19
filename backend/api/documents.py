@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from backend.database import get_db, get_user_documents, get_document_by_id, delete_document as db_delete_document
 from backend.auth import get_current_user
-from backend import state
+from backend import state  # noqa: ERA001 - legacy import pattern
 
 router = APIRouter()
 
