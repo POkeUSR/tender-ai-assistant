@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field
 
-from backend.database import get_db, create_user, get_user_by_email
+from backend.database import get_db_sync, create_user, get_user_by_email
 from backend.auth import (
     verify_password,
     get_password_hash,
@@ -19,6 +19,7 @@ from backend.auth import (
     authenticate_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -59,7 +60,7 @@ class MessageResponse(BaseModel):
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register(user_data: UserCreate, db: Session = Depends(get_db_sync)):
     """
     Register a new user.
     
@@ -107,7 +108,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db_sync)):
     """
     Login with email and password.
     Returns access and refresh tokens.
@@ -147,7 +148,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_data: TokenRefreshRequest, db: Session = Depends(get_db)):
+async def refresh_token(refresh_data: TokenRefreshRequest, db: Session = Depends(get_db_sync)):
     """
     Refresh access token using refresh token.
     

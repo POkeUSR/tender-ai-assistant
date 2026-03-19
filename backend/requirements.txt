@@ -17,3 +17,5 @@ python-jose[cryptography]
 passlib[bcrypt]
 pyjwt
 email-validator
+asyncpg
+sqlalchemy[asyncio]

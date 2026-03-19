@@ -13,7 +13,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from backend.database import get_db, User, get_user_by_id
+from backend.database import get_db_sync, User, get_user_by_id
 
 # Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-in-production")
@@ -117,7 +117,7 @@ def decode_token(token: str) -> Optional[dict]:
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_sync)
 ) -> User:
     """
     Get the current authenticated user from JWT token.
@@ -168,7 +168,7 @@ async def get_current_user(
 
 async def get_current_user_optional(
     token: Optional[str] = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_sync)
 ) -> Optional[User]:
     """
     Get the current user if authenticated, None otherwise.
